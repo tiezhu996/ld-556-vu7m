@@ -11,7 +11,30 @@
     <n-grid :cols="2" :x-gap="18" :y-gap="18" responsive="screen">
       <n-gi>
         <section class="panel"><h2>个人简介</h2><p>{{ member.bio }}</p></section>
-        <section class="panel"><h2>关联成员</h2><p>父母：{{ relations(member.id).parent?.name || '未记录' }}</p><p>配偶：{{ relations(member.id).spouses.map((item) => item.name).join('、') || '未记录' }}</p><p>子女：{{ relations(member.id).children.map((item) => item.name).join('、') || '未记录' }}</p></section>
+        <section class="panel">
+          <h2>关联成员</h2>
+          <div class="relation-row">
+            <span class="relation-label">父母</span>
+            <template v-if="relationSummary.parents.length">
+              <RouterLink v-for="item in relationSummary.parents" :key="item.id" class="relation-link" :to="`/members/${item.id}`">{{ item.name }}</RouterLink>
+            </template>
+            <span v-else class="relation-empty">未记录</span>
+          </div>
+          <div class="relation-row">
+            <span class="relation-label">配偶</span>
+            <template v-if="relationSummary.spouses.length">
+              <RouterLink v-for="item in relationSummary.spouses" :key="item.id" class="relation-link" :to="`/members/${item.id}`">{{ item.name }}</RouterLink>
+            </template>
+            <span v-else class="relation-empty">未记录</span>
+          </div>
+          <div class="relation-row">
+            <span class="relation-label">子女</span>
+            <template v-if="relationSummary.children.length">
+              <RouterLink v-for="item in relationSummary.children" :key="item.id" class="relation-link" :to="`/members/${item.id}`">{{ item.name }}</RouterLink>
+            </template>
+            <span v-else class="relation-empty">未记录</span>
+          </div>
+        </section>
       </n-gi>
       <n-gi>
         <section class="panel"><h2>家族故事</h2><TimelineView :items="storyItems" /></section>
@@ -43,6 +66,7 @@ const story = useStory()
 const photo = usePhoto()
 const legacy = useLegacyStore()
 const member = computed(() => getById(String(route.params.id)))
+const relationSummary = computed(() => relations(String(route.params.id)))
 const storyItems = computed(() => story.byMember(String(route.params.id)).map((item) => ({ id: item.id, title: item.title, description: item.content, date: item.date })))
 const galleryItems = computed(() => photo.byMember(String(route.params.id)).map((item) => ({ id: item.id, url: item.restoredUrl || item.imageUrl, caption: item.caption, year: item.year, meta: item.location })))
 const memberPlans = computed(() => legacy.byMember(String(route.params.id)))
@@ -51,3 +75,34 @@ onMounted(async () => {
   await Promise.all([hydrate(), story.hydrate(), photo.hydrate(), legacy.hydrate()])
 })
 </script>
+
+<style scoped>
+.relation-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 8px 0;
+}
+
+.relation-label {
+  min-width: 36px;
+  color: #6b7c72;
+  font-size: 14px;
+}
+
+.relation-link {
+  color: #395346;
+  font-weight: 600;
+  border-bottom: 1px dashed rgba(57, 83, 70, 0.5);
+}
+
+.relation-link:hover {
+  color: #24352d;
+  border-bottom-style: solid;
+}
+
+.relation-empty {
+  color: #9aa69e;
+}
+</style>

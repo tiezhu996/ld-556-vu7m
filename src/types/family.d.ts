@@ -23,5 +23,7 @@ export interface FamilyTreeNode extends FamilyMember {
 export interface MemberRelationSummary {
   spouses: FamilyMember[]
   children: FamilyMember[]
+  parents: FamilyMember[]
+  /** 主父母（parentId 指向的节点），保留兼容树形结构 */
   parent?: FamilyMember
 }

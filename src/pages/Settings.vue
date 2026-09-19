@@ -37,6 +37,8 @@ import { useLegacyStore } from '@/stores/legacyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { buildExportPayload, downloadJson } from '@/utils/export'
 import { parseGedcom } from '@/utils/gedcom-parser'
+import { formatIssues, RelationValidationError } from '@/utils/relation-validator'
+import { useMessage } from 'naive-ui'
 
 const password = ref('')
 const settings = useSettingsStore()
@@ -46,6 +48,7 @@ const photo = usePhotoStore()
 const legacy = useLegacyStore()
 const { encryptionReady, encryptionHint, theme } = storeToRefs(settings)
 const { setPassword, lockEncryption, setTheme } = settings
+const message = useMessage()
 
 async function exportData(encrypted: boolean) {
   const payload = await buildExportPayload({ family: family.members, stories: story.stories, photos: photo.photos, legacyPlans: legacy.plans }, encrypted)
@@ -55,8 +58,17 @@ async function exportData(encrypted: boolean) {
 async function importGedcom(options: { file: UploadFileInfo }) {
   const raw = options.file.file
   if (!raw) return
-  const members = parseGedcom(await raw.text())
-  for (const member of members) await family.addMember(member)
+  try {
+    const incoming = parseGedcom(await raw.text())
+    await family.importMembers(incoming)
+    message.success(`GEDCOM 已导入 ${incoming.length} 位成员，父母、配偶、子女关系已双向建立`)
+  } catch (error) {
+    if (error instanceof RelationValidationError) {
+      message.error(`已拒绝整批导入，现有家谱保持不变：${formatIssues(error.issues)}`)
+    } else {
+      message.error('GEDCOM 文件解析失败，请检查文件格式后重试')
+    }
+  }
 }
 
 function updateTheme(value: string | number) {
