@@ -4,6 +4,7 @@ import { defaultMembers } from '@/constants/default-templates'
 import type { FamilyMember, FamilyTreeNode, MemberRelationSummary } from '@/types/family'
 import { readFamilyMembers, writeFamilyMembers } from '@/db/family-db'
 import { getMemberStatus } from '@/utils/member-status'
+import { validateMemberBatch } from '@/utils/relationship-validator'
 
 function buildTree(members: FamilyMember[]): FamilyTreeNode[] {
   const map = new Map<string, FamilyTreeNode>(members.map((member) => [member.id, { ...member, status: getMemberStatus(member), children: [] }]))
@@ -67,6 +68,22 @@ export const useFamilyStore = defineStore('family', () => {
     await persist()
   }
 
+  async function importMembers(incoming: FamilyMember[]) {
+    const issues = validateMemberBatch(members.value, incoming)
+    if (issues.length) {
+      const preview = issues.slice(0, 5).join('；')
+      throw new Error(`GEDCOM 导入校验未通过，已整批拒绝：${preview}${issues.length > 5 ? ` 等 ${issues.length} 项问题` : ''}`)
+    }
+    const snapshot = members.value
+    members.value = [...members.value, ...incoming]
+    try {
+      await persist()
+    } catch (error) {
+      members.value = snapshot
+      throw error
+    }
+  }
+
   async function removeMember(id: string) {
     const descendantIds = new Set<string>([id])
     let changed = true
@@ -89,5 +106,5 @@ export const useFamilyStore = defineStore('family', () => {
     await persist()
   }
 
-  return { members, loading, tree, memberOptions, hydrate, persist, getById, relations, addMember, updateMember, removeMember }
+  return { members, loading, tree, memberOptions, hydrate, persist, getById, relations, addMember, updateMember, importMembers, removeMember }
 })

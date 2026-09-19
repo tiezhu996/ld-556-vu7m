@@ -46,7 +46,7 @@ src/
 ├── pages/         # FamilyTree, MemberDetail, Stories, Photos, Legacy, Settings
 ├── router/        # index.ts, routes.ts, guards.ts
 ├── db/            # family-db.ts, story-db.ts, photo-db.ts, legacy-db.ts, secure-store.ts, index.ts
-├── utils/         # gedcom-parser.ts, crypto.ts, export.ts, image-filter.ts, member-status.ts, error-handler.ts
+├── utils/         # gedcom-parser.ts, relationship-validator.ts, crypto.ts, export.ts, image-filter.ts, member-status.ts, error-handler.ts
 └── assets/        # 默认头像、空状态插画、图标
 ```
 
@@ -72,8 +72,9 @@ src/
 
 - JSON 导出：设置页可导出完整 family、stories、photos、legacyPlans 数据。
 - 加密 JSON 导出：需要先设置加密密码，否则 Web Crypto 层会提示密钥未解锁。
-- GEDCOM 导入：`src/utils/gedcom-parser.ts` 支持读取 `INDI`、`NAME`、`SEX`、`BIRT DATE`、`DEAT DATE` 元素并转换为 FamilyMember。
-- GEDCOM 限制：当前版本不解析 `FAM`、`HUSB`、`WIFE`、`CHIL` 家庭关系块，因此导入后父子和配偶关系需要在家谱树中手动补充。
+- GEDCOM 导入：`src/utils/gedcom-parser.ts` 支持读取 `INDI`、`NAME`、`SEX`、`BIRT DATE`、`DEAT DATE` 个体元素，以及 `FAM` 家庭记录中的 `HUSB`、`WIFE`、`CHIL` 关系指针，转换为 FamilyMember 并写入双向亲属关系（子女的 `parentId`、父母的 `childrenIds`、配偶双方的 `spouseIds`），世代号按祖先链自动推导。
+- GEDCOM 导入校验：`src/utils/relationship-validator.ts` 在写入前检查重复成员（ID 或姓名+出生日期与现有/同批成员冲突）、自关联、配偶与父母指向同一人、祖先环；任一项异常即整批拒绝，原有数据保持不变，持久化失败也会回滚内存状态。
+- GEDCOM 限制：仅解析上述元素，不支持 `NOTE`、`SOUR`、`OBJE` 等扩展记录；多段婚姻以多个 `FAM` 记录合并为 `spouseIds` 列表；日期仅提取年份。导入成功后家谱树与成员详情立即读取同一批关系数据，刷新页面后从 IndexedDB 恢复，不会丢失。
 
 ## 全局异常处理说明
 

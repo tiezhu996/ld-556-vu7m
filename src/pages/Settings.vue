@@ -36,6 +36,7 @@ import { usePhotoStore } from '@/stores/photoStore'
 import { useLegacyStore } from '@/stores/legacyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { buildExportPayload, downloadJson } from '@/utils/export'
+import { notifySuccess, withFriendlyError } from '@/utils/error-handler'
 import { parseGedcom } from '@/utils/gedcom-parser'
 
 const password = ref('')
@@ -55,8 +56,12 @@ async function exportData(encrypted: boolean) {
 async function importGedcom(options: { file: UploadFileInfo }) {
   const raw = options.file.file
   if (!raw) return
-  const members = parseGedcom(await raw.text())
-  for (const member of members) await family.addMember(member)
+  await withFriendlyError(async () => {
+    const members = parseGedcom(await raw.text())
+    if (!members.length) throw new Error('未从文件中解析到任何家庭成员')
+    await family.importMembers(members)
+    notifySuccess(`成功导入 ${members.length} 名家庭成员，亲属关系已同步到家谱树`)
+  }, 'GEDCOM 导入失败')
 }
 
 function updateTheme(value: string | number) {

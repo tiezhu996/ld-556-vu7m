@@ -15,6 +15,14 @@ export function notifyError(error: unknown, fallback = '操作失败，请稍后
   console.error(error)
 }
 
+export function notifySuccess(content: string) {
+  if (messageApi) {
+    messageApi.success(content)
+    return
+  }
+  console.log(content)
+}
+
 export async function withFriendlyError<T>(task: () => Promise<T>, fallback?: string): Promise<T | undefined> {
   try {
     return await task()
